@@ -173,6 +173,9 @@ type
     ## Any expression that could go into the type part of a routine parameter,
     ## the identdef of a var or let section, etc.
 
+  WhileStmt* = distinct NormNode
+    ## A while loop
+
 const TypeExprKinds = {
     nnkIdent, nnkSym,   # the simple atoms
     nnkVarTy, nnkRefTy, # the weirder ones
@@ -225,6 +228,13 @@ const
                   nnkHiddenAddr, nnkHiddenDeref}
     ## "Hidden" AST nodes
 
+  BranchNodes* = {nnkExceptBranch, nnkFinally, nnkElifBranch, nnkElifExpr,
+                  nnkElse, nnkElseExpr, nnkOfBranch}
+    ## AST nodes marking an execution branch
+
+  StmtListNodes* = {nnkStmtList, nnkStmtListExpr}
+    ## All statement list nodes
+
 # Converters - to reduce the conversion spam
 
 macro defineToNimNodeConverter(ts: varargs[typed]) =
@@ -259,9 +269,10 @@ defineToNimNodeConverter(
 
 # all the types that can convert down to `NormNode`
 allowAutoDowngradeNormalizedNode(
-    Name, TypeExpr, Call, Conv, PragmaStmt, PragmaAtom, IdentDef, RoutineDef,
-    ProcDef, FormalParams, RoutineParam, VarSection, LetSection, VarLet,
-    VarLetIdentDef, VarLetTuple, DefVarLet, IdentDefLet, Sym
+    Name, TypeExpr, Call, Conv, PragmaBlock, PragmaStmt, PragmaAtom, IdentDef,
+    RoutineDef, ProcDef, FormalParams, RoutineParam, VarSection, LetSection,
+    VarLet, VarLetIdentDef, VarLetTuple, DefVarLet, IdentDefLet, Sym,
+    WhileStmt
   )
 
 # types that go from a specific type to a less specific type, "downgrade"
@@ -909,7 +920,7 @@ proc newIdentDefVar*(n: Name, t: TypeExprLike, val = newEmptyNode()): IdentDefVa
 # fn-PragmaLike
 
 type
-  PragmaLike* = PragmaBlock | PragmaExpr | PragmaStmt
+  PragmaLike* = PragmaExpr | PragmaStmt
     ## abstract over any pragma like thing and provide common operations
 
 proc add(p: PragmaLike, e: PragmaAtom) =
@@ -967,12 +978,21 @@ proc newPragmaStmtWithInfo*(inf: NormNode, es: varargs[PragmaAtom]): PragmaStmt 
 # fn-PragmaBlock
 
 createAsTypeFunc(PragmaBlock, {nnkPragmaBlock}, "not a pragmaBlock")
+proc newPragmaBlock*(n: Name, body: NormNode): PragmaBlock =
+  result = PragmaBlock:
+    nnkPragmaBlock.newTree(
+      newPragmaStmt(n),
+      body
+    )
+
+proc body*(n: PragmaBlock): NormNode =
+  n[1]
 
 # fn-PragmaHaver
 
 type
   PragmaHaver* = RoutineDef | ProcDef | Call | TypeExprObj | TypeExprRef |
-                 TypeDef
+                 TypeDef | PragmaBlock
     ## abstract over things that have pragmas to provide a uniform interface
 
 func pragma*(n: PragmaHaver): PragmaLike =
@@ -988,6 +1008,8 @@ func pragma*(n: PragmaHaver): PragmaLike =
     PragmaStmt n.NimNode[0]
   elif n is TypeExprRef | TypeDef:
     PragmaStmt n.NimNode.last
+  elif n is PragmaBlock:
+    PragmaStmt n.NimNode[0]
   else:
     {.error: "not all types have been defined".}
 
@@ -1190,3 +1212,15 @@ proc hasPragma*(n: NormNode; s: static[string]): bool =
     result = anyIt(toSeq items(n), hasPragma(it, s))
   else:
     result = false
+
+# fn-WhileStmt
+
+createAsTypeFunc(WhileStmt, {nnkWhileStmt}, "node is not a while loop")
+
+proc cond*(n: WhileStmt): NormNode =
+  ## Get the loop condition
+  NormNode n[0]
+
+proc body*(n: WhileStmt): NormNode =
+  ## Get the while loop body
+  NormNode n[1]

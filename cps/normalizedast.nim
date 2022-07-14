@@ -653,6 +653,10 @@ proc asPragmaAtom*(n: Name): PragmaAtom =
   ## convert a Name to a PragmaAtom
   PragmaAtom n
 
+proc asPragmaAtom*(n: Call): PragmaAtom =
+  ## convert a Call to a PragmaAtom
+  PragmaAtom n
+
 proc newPragmaColonExpr*(n: static[string], r: NormNode): PragmaAtom =
   ## create a new `PragmaAtom` that's a colon expression
   PragmaAtom newColonExpr(bindName(n), r)
@@ -948,6 +952,18 @@ func findPragma*(n: PragmaLike, s: static[string]): PragmaAtom =
       break
 
 func hasPragma*(n: PragmaLike, s: static[string]): bool =
+  ## `true` if the `n` holds the pragma `s`
+  n.findPragma(s).NormNode != nil
+
+func findPragma*(n: PragmaLike, s: Sym): PragmaAtom =
+  ## returns the pragma atom `s` from `n` if it exists
+  for p in n.items:
+    # just skip ColonExprs, etc.
+    if p.getPragmaName == s:
+      result = p
+      break
+
+func hasPragma*(n: PragmaLike, s: Sym): bool =
   ## `true` if the `n` holds the pragma `s`
   n.findPragma(s).NormNode != nil
 

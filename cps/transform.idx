@@ -1,0 +1,5 @@
+unwind	cps/transform.html#unwind,sinkContinuation,ref.Exception	transform: unwind(c: sink Continuation; e: ref Exception): Continuation	
+unwind	cps/transform.html#unwind,ref.Exception	transform: unwind(e: ref Exception)	
+cpsTransform	cps/transform.html#cpsTransform.m,typed,typed	transform: cpsTransform(tipe, n: typed): untyped	
+rewriteCalls	cps/transform.html#rewriteCalls,NimNode	transform: rewriteCalls(n: NimNode): NimNode	
+performUntypedPass	cps/transform.html#performUntypedPass,NimNode,NimNode	transform: performUntypedPass(tipe: NimNode; n: NimNode): NimNode	
